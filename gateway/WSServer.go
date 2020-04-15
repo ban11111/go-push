@@ -12,6 +12,7 @@ import (
 // 	WebSocket服务端
 type WSServer struct {
 	server *http.Server
+	listener net.Listener
 	curConnId uint64
 }
 
@@ -47,6 +48,33 @@ func handleConnect(resp http.ResponseWriter, req *http.Request) {
 
 	// 开始处理websocket消息
 	wsConn.WSHandle()
+}
+
+func NewWsServer(cfg *Config) (s *WSServer, err error) {
+	var mux *http.ServeMux
+	// 路由
+	mux = http.NewServeMux()
+	mux.HandleFunc("/connect", handleConnect)
+
+	s = &WSServer{
+		server: &http.Server{
+			ReadTimeout: time.Duration(cfg.WsReadTimeout) * time.Millisecond,
+			WriteTimeout: time.Duration(cfg.WsWriteTimeout) * time.Millisecond,
+			Handler: mux,
+		},
+		curConnId: uint64(time.Now().Unix()),
+	}
+
+	// 监听端口
+	if s.listener, err = net.Listen("tcp", ":" + strconv.Itoa(cfg.WsPort)); err != nil {
+		return
+	}
+
+	return
+}
+
+func (s *WSServer) RunAsync()  {
+	go s.server.Serve(s.listener)
 }
 
 func InitWSServer() (err error) {
