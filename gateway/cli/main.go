@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/owenliang/go-push/gateway"
+	"github.com/ban11111/go-push/gateway"
 	"fmt"
 	"os"
 	"flag"

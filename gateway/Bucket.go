@@ -2,7 +2,7 @@ package gateway
 
 import (
 	"sync"
-	"github.com/owenliang/go-push/common"
+	"github.com/ban11111/go-push/common"
 )
 
 type Bucket struct {

@@ -1,6 +1,6 @@
 package gateway
 
-import "github.com/owenliang/go-push/common"
+import "github.com/ban11111/go-push/common"
 
 // 推送任务
 type PushJob struct {

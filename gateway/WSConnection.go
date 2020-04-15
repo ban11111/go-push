@@ -4,7 +4,7 @@ import (
 	"github.com/gorilla/websocket"
 	"sync"
 	"time"
-	"github.com/owenliang/go-push/common"
+	"github.com/ban11111/go-push/common"
 )
 
 type WSConnection struct {
