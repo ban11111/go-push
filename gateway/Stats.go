@@ -35,6 +35,13 @@ var (
 	G_stats *Stats
 )
 
+func NewStats() *Stats {
+	if G_stats ==nil {
+		_ = InitStats()
+	}
+	return G_stats
+}
+
 func InitStats() (err error) {
 	G_stats = &Stats{}
 	return
