@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"github.com/gorilla/websocket"
+	"log"
 	"sync"
 	"time"
 	"github.com/ban11111/go-push/common"
@@ -29,6 +30,7 @@ func (wsConnection *WSConnection) readLoop() {
 	)
 	for {
 		if msgType, msgData, err = wsConnection.wsSocket.ReadMessage(); err != nil {
+			log.Println("WSConnection.readLoop.ReadMessage()", err.Error())
 			goto ERR
 		}
 
@@ -56,6 +58,7 @@ func (wsConnection *WSConnection) writeLoop() {
 		select {
 		case message = <- wsConnection.outChan:
 			if err = wsConnection.wsSocket.WriteMessage(message.MsgType, message.MsgData); err != nil {
+				log.Println("WSConnection.writeLoop.WriteMessage()", err.Error())
 				goto ERR
 			}
 		case <- wsConnection.closeChan:
