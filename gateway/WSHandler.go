@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"log"
 	"time"
 	"github.com/gorilla/websocket"
 	"encoding/json"
@@ -162,14 +163,17 @@ func (wsConnection *WSConnection) WSHandle() {
 		switch bizReq.Type {
 		case "PING":
 			if bizResp, err = wsConnection.handlePing(bizReq); err != nil {
+				log.Print("PING failed", err.Error())
 				goto ERR
 			}
 		case "JOIN":
 			if bizResp, err = wsConnection.handleJoin(bizReq); err != nil {
+				log.Print("JOIN room failed", err.Error())
 				goto ERR
 			}
 		case "LEAVE":
 			if bizResp, err = wsConnection.handleLeave(bizReq); err != nil {
+				log.Print("LEAVE room failed", err.Error())
 				goto ERR
 			}
 		}
