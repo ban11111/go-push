@@ -41,4 +41,5 @@ func InitGateWayServer(cfg *Config) (err error) {
 ERR:
 	fmt.Fprintln(os.Stderr, err)
 	os.Exit(-1)
+	return err
 }
