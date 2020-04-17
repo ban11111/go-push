@@ -140,16 +140,19 @@ func (wsConnection *WSConnection) WSHandle() {
 	// 请求处理协程
 	for {
 		if message, err = wsConnection.ReadMessage(); err != nil {
+			log.Println("ReadMessage", err.Error())
 			goto ERR
 		}
 
 		// 只处理文本消息
 		if message.MsgType != websocket.TextMessage {
+			log.Println("wrong MsgType")
 			continue
 		}
 
 		// 解析消息体
 		if bizReq, err = common.DecodeBizMessage(message.MsgData); err != nil {
+			log.Println("DecodeBizMessage req failed", err.Error())
 			goto ERR
 		}
 
@@ -163,23 +166,24 @@ func (wsConnection *WSConnection) WSHandle() {
 		switch bizReq.Type {
 		case "PING":
 			if bizResp, err = wsConnection.handlePing(bizReq); err != nil {
-				log.Print("PING failed", err.Error())
+				log.Println("PING failed", err.Error())
 				goto ERR
 			}
 		case "JOIN":
 			if bizResp, err = wsConnection.handleJoin(bizReq); err != nil {
-				log.Print("JOIN room failed", err.Error())
+				log.Println("JOIN room failed", err.Error())
 				goto ERR
 			}
 		case "LEAVE":
 			if bizResp, err = wsConnection.handleLeave(bizReq); err != nil {
-				log.Print("LEAVE room failed", err.Error())
+				log.Println("LEAVE room failed", err.Error())
 				goto ERR
 			}
 		}
 
 		if bizResp != nil {
 			if buf, err = json.Marshal(*bizResp); err != nil {
+				log.Println("Marshal resp failed", err.Error())
 				goto ERR
 			}
 			// socket缓冲区写满不是致命错误
