@@ -3,6 +3,7 @@ package gateway
 import (
 	"encoding/json"
 	"github.com/ban11111/go-push/common"
+	"log"
 	"time"
 )
 
@@ -89,6 +90,7 @@ func (worker *MergeWorker) commitBatch(batch *PushBatch) (err error) {
 		Items: batch.items,
 	}
 	if buf, err = json.Marshal(*bizPushData); err != nil {
+
 		return
 	}
 
@@ -174,7 +176,9 @@ func (worker *MergeWorker) mergeWorkerMain() {
 			}
 		}
 		// 提交批次
-		err = worker.commitBatch(batch)
+		if err = worker.commitBatch(batch); err != nil {
+			log.Println("MergeWorker.commitBatch", err.Error())
+		}
 
 		// 打点统计
 		if worker.mergeType == common.PUSH_TYPE_ALL {
