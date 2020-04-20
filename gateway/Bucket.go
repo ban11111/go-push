@@ -1,11 +1,8 @@
 package gateway
 
 import (
-	"fmt"
-	"sync"
-	"time"
-
 	"github.com/ban11111/go-push/common"
+	"sync"
 )
 
 type Bucket struct {
@@ -21,17 +18,6 @@ func InitBucket(bucketIdx int) (bucket *Bucket) {
 		id2Conn: make(map[uint64]*WSConnection),
 		rooms:   make(map[string]*Room),
 	}
-
-	go func() {
-		for {
-			<-time.After(time.Second * 5)
-			fmt.Println("rooms", len(bucket.rooms))
-			for key, room := range bucket.rooms {
-				fmt.Println("room names: ", key, room.roomId)
-			}
-		}
-	}()
-
 	return
 }
 

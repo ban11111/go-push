@@ -79,7 +79,7 @@ func (wsConnection *WSConnection) handleJoin(bizReq *common.BizMessage) (bizResp
 	}
 	// 建立连接 -> 房间的关系
 	wsConnection.rooms[bizJoinData.Room] = true
-	return
+	return &common.BizMessage{Type: "JOIN", Data: []byte(`{"success": true}`)}, nil
 }
 
 // 处理LEAVE请求
