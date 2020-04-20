@@ -1,23 +1,38 @@
 package gateway
 
 import (
+	"encoding/json"
+	"fmt"
 	"sync"
+	"time"
+
 	"github.com/ban11111/go-push/common"
 )
 
 type Bucket struct {
 	rwMutex sync.RWMutex
-	index int // 我是第几个桶
-	id2Conn map[uint64]*WSConnection	// 连接列表(key=连接唯一ID)
-	rooms map[string]*Room // 房间列表
+	index   int                      // 我是第几个桶
+	id2Conn map[uint64]*WSConnection // 连接列表(key=连接唯一ID)
+	rooms   map[string]*Room         // 房间列表
 }
 
 func InitBucket(bucketIdx int) (bucket *Bucket) {
 	bucket = &Bucket{
-		index: bucketIdx,
+		index:   bucketIdx,
 		id2Conn: make(map[uint64]*WSConnection),
-		rooms: make(map[string]*Room),
+		rooms:   make(map[string]*Room),
 	}
+
+	go func() {
+		for {
+			<-time.After(time.Second * 5)
+			fmt.Println("rooms", len(bucket.rooms))
+			for key, room := range bucket.rooms {
+				fmt.Println("room names: ", key, room.roomId)
+			}
+		}
+	}()
+
 	return
 }
 
@@ -38,7 +53,7 @@ func (bucket *Bucket) DelConn(wsConn *WSConnection) {
 func (bucket *Bucket) JoinRoom(roomId string, wsConn *WSConnection) (err error) {
 	var (
 		existed bool
-		room *Room
+		room    *Room
 	)
 	bucket.rwMutex.Lock()
 	defer bucket.rwMutex.Unlock()
@@ -57,7 +72,7 @@ func (bucket *Bucket) JoinRoom(roomId string, wsConn *WSConnection) (err error) 
 func (bucket *Bucket) LeaveRoom(roomId string, wsConn *WSConnection) (err error) {
 	var (
 		existed bool
-		room *Room
+		room    *Room
 	)
 	bucket.rwMutex.Lock()
 	defer bucket.rwMutex.Unlock()
@@ -97,7 +112,7 @@ func (bucket *Bucket) PushAll(wsMsg *common.WSMessage) {
 // 推送给某个房间的所有用户
 func (bucket *Bucket) PushRoom(roomId string, wsMsg *common.WSMessage) {
 	var (
-		room *Room
+		room    *Room
 		existed bool
 	)
 
