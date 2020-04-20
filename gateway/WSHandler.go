@@ -107,7 +107,7 @@ func (wsConnection *WSConnection) handleLeave(bizReq *common.BizMessage) (bizRes
 	}
 	// 删除连接 -> 房间的关系
 	delete(wsConnection.rooms, bizLeaveData.Room)
-	return
+	return &common.BizMessage{Type: "LEAVE", Data: []byte(`{"success": true}`)}, nil
 }
 
 func (wsConnection *WSConnection) leaveAll() {
