@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"crypto/tls"
 	"net/http"
 	"time"
 	"net"
@@ -63,6 +64,13 @@ func NewWsServer(cfg *Config) (s *WSServer, err error) {
 			Handler: mux,
 		},
 		curConnId: uint64(time.Now().Unix()),
+	}
+	if cfg.ServerPem != "" && cfg.ServerKey != "" {
+		cer, err := tls.X509KeyPair([]byte(cfg.ServerPem), []byte(cfg.ServerKey))
+		if err != nil {
+			return nil, err
+		}
+		s.server.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cer}}
 	}
 
 	// 监听端口
