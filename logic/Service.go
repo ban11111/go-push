@@ -57,6 +57,28 @@ func handlePushRoom(resp http.ResponseWriter, req *http.Request) {
 	G_gateConnMgr.PushRoom(room, msgArr)
 }
 
+// 房间推送POST room=xxx&msg
+func handlePushRoomOne(resp http.ResponseWriter, req *http.Request) {
+	var (
+		err error
+		room string
+		items string
+		msgArr []json.RawMessage
+	)
+	if err = req.ParseForm(); err != nil {
+		return
+	}
+
+	room = req.PostForm.Get("room")
+	items = req.PostForm.Get("items")
+
+	if err = json.Unmarshal([]byte(items), &msgArr); err != nil {
+		return
+	}
+
+	G_gateConnMgr.PushRoomOne(room, msgArr)
+}
+
 // 处理统计
 func handleStats(resp http.ResponseWriter, req *http.Request) {
 	var (
@@ -82,6 +104,7 @@ func InitService() (err error) {
 	mux = http.NewServeMux()
 	mux.HandleFunc("/push/all", handlePushAll)
 	mux.HandleFunc("/push/room", handlePushRoom)
+	mux.HandleFunc("/push/room_one", handlePushRoomOne)
 	mux.HandleFunc("/stats", handleStats)
 
 	// HTTP/1服务
