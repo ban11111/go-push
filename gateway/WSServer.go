@@ -65,17 +65,17 @@ func NewWsServer(cfg *Config) (s *WSServer, err error) {
 		},
 		curConnId: uint64(time.Now().Unix()),
 	}
+	// 监听端口
+	if s.listener, err = net.Listen("tcp", ":" + strconv.Itoa(cfg.WsPort)); err != nil {
+		return
+	}
 	if cfg.ServerPem != "" && cfg.ServerKey != "" {
 		cer, err := tls.X509KeyPair([]byte(cfg.ServerPem), []byte(cfg.ServerKey))
 		if err != nil {
 			return nil, err
 		}
 		s.server.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cer}}
-	}
-
-	// 监听端口
-	if s.listener, err = net.Listen("tcp", ":" + strconv.Itoa(cfg.WsPort)); err != nil {
-		return
+		s.listener = tls.NewListener(s.listener, &tls.Config{Certificates: []tls.Certificate{cer}})
 	}
 
 	return
