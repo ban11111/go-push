@@ -72,3 +72,16 @@ func (room *Room) Push(wsMsg *common.WSMessage) {
 		wsConn.SendMessage(wsMsg)
 	}
 }
+
+func (room *Room) PushOne(wsMsg *common.WSMessage) bool {
+	room.rwMutex.RLock()
+	defer room.rwMutex.RUnlock()
+
+	for _, wsConn := range room.id2Conn {
+		if err := wsConn.SendMessage(wsMsg); err != nil {
+			continue
+		}
+		return true
+	}
+	return false
+}

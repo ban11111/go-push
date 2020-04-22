@@ -27,7 +27,7 @@ func NewConnMgr(cfg *Config) *ConnMgr {
 		dispatchChan: make(chan *PushJob, cfg.DispatchChannelSize),
 	}
 	for bucketIdx := range mgr.buckets {
-		mgr.buckets[bucketIdx] = InitBucket(bucketIdx)                     // 初始化Bucket
+		mgr.buckets[bucketIdx] = InitBucket(bucketIdx)                         // 初始化Bucket
 		mgr.jobChan[bucketIdx] = make(chan *PushJob, cfg.BucketJobChannelSize) // Bucket的Job队列
 	}
 	return mgr
@@ -38,7 +38,7 @@ var (
 )
 
 // 消息分发到Bucket
-func (connMgr *ConnMgr) dispatchWorkerMain(dispatchWorkerIdx int) {
+func (connMgr *ConnMgr) dispatchWorkerMain(dispatchWorkerIdx int, pushedOne chan bool) {
 	var (
 		bucketIdx int
 		pushJob   *PushJob
@@ -57,13 +57,18 @@ func (connMgr *ConnMgr) dispatchWorkerMain(dispatchWorkerIdx int) {
 			for bucketIdx, _ = range connMgr.buckets {
 				PushJobPending_INCR()
 				connMgr.jobChan[bucketIdx] <- pushJob
+				if pushJob.pushType == common.PushTypeRoomOne {
+					if one := <-pushedOne; one {
+						break
+					}
+				}
 			}
 		}
 	}
 }
 
 // Job负责消息广播给客户端
-func (connMgr *ConnMgr) jobWorkerMain(jobWorkerIdx int, bucketIdx int) {
+func (connMgr *ConnMgr) jobWorkerMain(jobWorkerIdx int, bucketIdx int, pushedOne chan bool) {
 	var (
 		bucket  = connMgr.buckets[bucketIdx]
 		pushJob *PushJob
@@ -73,25 +78,28 @@ func (connMgr *ConnMgr) jobWorkerMain(jobWorkerIdx int, bucketIdx int) {
 		select {
 		case pushJob = <-connMgr.jobChan[bucketIdx]: // 从Bucket的job queue取出一个任务
 			PushJobPending_DESC()
-			if pushJob.pushType == common.PUSH_TYPE_ALL {
+			if pushJob.pushType == common.PushTypeAll {
 				bucket.PushAll(pushJob.wsMsg)
-			} else if pushJob.pushType == common.PUSH_TYPE_ROOM {
+			} else if pushJob.pushType == common.PushTypeRoom {
 				bucket.PushRoom(pushJob.roomId, pushJob.wsMsg)
+			} else if pushJob.pushType == common.PushTypeRoomOne {
+				pushedOne <- bucket.PushRoomOne(pushJob.roomId, pushJob.wsMsg)
 			}
 		}
 	}
 }
 
 func (connMgr *ConnMgr) RunAsync() {
+	pushedOne := make(chan bool)
 	for bucketIdx := range connMgr.buckets {
 		// Bucket的Job worker
 		for jobWorkerIdx := 0; jobWorkerIdx < G_config.BucketJobWorkerCount; jobWorkerIdx++ {
-			go connMgr.jobWorkerMain(jobWorkerIdx, bucketIdx)
+			go connMgr.jobWorkerMain(jobWorkerIdx, bucketIdx, pushedOne)
 		}
 	}
 	// 初始化分发协程, 用于将消息扇出给各个Bucket
 	for dispatchWorkerIdx := 0; dispatchWorkerIdx < G_config.DispatchWorkerCount; dispatchWorkerIdx++ {
-		go connMgr.dispatchWorkerMain(dispatchWorkerIdx)
+		go connMgr.dispatchWorkerMain(dispatchWorkerIdx, pushedOne)
 	}
 }
 
@@ -109,15 +117,16 @@ func InitConnMgr() (err error) {
 
 	connMgr = NewConnMgr(G_config)
 
+	pushedOne := make(chan bool)
 	for bucketIdx, _ = range connMgr.buckets {
 		// Bucket的Job worker
 		for jobWorkerIdx = 0; jobWorkerIdx < G_config.BucketJobWorkerCount; jobWorkerIdx++ {
-			go connMgr.jobWorkerMain(jobWorkerIdx, bucketIdx)
+			go connMgr.jobWorkerMain(jobWorkerIdx, bucketIdx, pushedOne)
 		}
 	}
 	// 初始化分发协程, 用于将消息扇出给各个Bucket
 	for dispatchWorkerIdx = 0; dispatchWorkerIdx < G_config.DispatchWorkerCount; dispatchWorkerIdx++ {
-		go connMgr.dispatchWorkerMain(dispatchWorkerIdx)
+		go connMgr.dispatchWorkerMain(dispatchWorkerIdx, pushedOne)
 	}
 
 	G_connMgr = connMgr
@@ -178,7 +187,7 @@ func (connMgr *ConnMgr) PushAll(bizMsg *common.BizMessage) (err error) {
 	)
 
 	pushJob = &PushJob{
-		pushType: common.PUSH_TYPE_ALL,
+		pushType: common.PushTypeAll,
 		bizMsg:   bizMsg,
 	}
 
@@ -199,7 +208,29 @@ func (connMgr *ConnMgr) PushRoom(roomId string, bizMsg *common.BizMessage) (err 
 	)
 
 	pushJob = &PushJob{
-		pushType: common.PUSH_TYPE_ROOM,
+		pushType: common.PushTypeRoom,
+		bizMsg:   bizMsg,
+		roomId:   roomId,
+	}
+
+	select {
+	case connMgr.dispatchChan <- pushJob:
+		DispatchPending_INCR()
+	default:
+		err = common.ERR_DISPATCH_CHANNEL_FULL
+		DispatchFail_INCR()
+	}
+	return
+}
+
+// 向指定房间发送消息给一个
+func (connMgr *ConnMgr) PushRoomOne(roomId string, bizMsg *common.BizMessage) (err error) {
+	var (
+		pushJob *PushJob
+	)
+
+	pushJob = &PushJob{
+		pushType: common.PushTypeRoomOne,
 		bizMsg:   bizMsg,
 		roomId:   roomId,
 	}

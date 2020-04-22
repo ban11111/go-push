@@ -80,30 +80,21 @@ func (bucket *Bucket) LeaveRoom(roomId string, wsConn *WSConnection) (err error)
 
 // 推送给Bucket内所有用户
 func (bucket *Bucket) PushAll(wsMsg *common.WSMessage) {
-	var (
-		wsConn *WSConnection
-	)
-
 	// 锁Bucket
 	bucket.rwMutex.RLock()
 	defer bucket.rwMutex.RUnlock()
 
 	// 全量非阻塞推送
-	for _, wsConn = range bucket.id2Conn {
+	for _, wsConn := range bucket.id2Conn {
 		wsConn.SendMessage(wsMsg)
 	}
 }
 
 // 推送给某个房间的所有用户
 func (bucket *Bucket) PushRoom(roomId string, wsMsg *common.WSMessage) {
-	var (
-		room    *Room
-		existed bool
-	)
-
-	// 锁Bucket
+		// 锁Bucket
 	bucket.rwMutex.RLock()
-	room, existed = bucket.rooms[roomId]
+	room, existed := bucket.rooms[roomId]
 	bucket.rwMutex.RUnlock()
 
 	// 房间不存在
@@ -113,4 +104,20 @@ func (bucket *Bucket) PushRoom(roomId string, wsMsg *common.WSMessage) {
 
 	// 向房间做推送
 	room.Push(wsMsg)
+}
+
+// 推送给某个房间的其中一个用户
+func (bucket *Bucket) PushRoomOne(roomId string, wsMsg *common.WSMessage) bool {
+	// 锁Bucket
+	bucket.rwMutex.RLock()
+	room, existed := bucket.rooms[roomId]
+	bucket.rwMutex.RUnlock()
+
+	// 房间不存在
+	if !existed {
+		return false
+	}
+
+	// 向房间做推送, 阻塞
+	return room.PushOne(wsMsg)
 }

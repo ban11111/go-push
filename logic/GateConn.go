@@ -91,3 +91,28 @@ func (gateConn *GateConn) PushRoom(room string, itemsJson []byte) (err error) {
 	}
 	return
 }
+
+func (gateConn *GateConn) PushRoomOne(room string, itemsJson []byte) (err error) {
+	var (
+		apiUrl string
+		form url.Values
+		resp *http.Response
+		retry int
+	)
+
+	apiUrl = gateConn.schema + "/push/room_one"
+
+	form = url.Values{}
+	form.Set("room", room)
+	form.Set("items", string(itemsJson))
+
+	for retry = 0; retry < G_config.GatewayPushRetry; retry++ {
+		if resp, err = gateConn.client.PostForm(apiUrl, form); err != nil {
+			PushFail_INCR()
+			continue
+		}
+		resp.Body.Close()
+		break
+	}
+	return
+}
